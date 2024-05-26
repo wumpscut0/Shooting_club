@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from dotenv import load_dotenv, find_dotenv
 
 from tools.loggers import info
-from utils.redis import UserStorage
+from utils.redis import ShootingClubStorage
 
 load_dotenv(find_dotenv())
 print(os.getenv("DATABASE") + "/shooting_club")
@@ -109,7 +109,7 @@ class UserGun(Base):
 
     @staticmethod
     async def merge_data(user_id: str):
-        storage = UserStorage(user_id)
+        storage = ShootingClubStorage(user_id)
         gun_id = storage.gun_id
         info.info(f"User {user_id} merge data {storage.zones}")
         async with Session.begin() as session:

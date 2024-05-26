@@ -4,14 +4,14 @@ from typing import Dict
 from aiogram.filters.callback_data import CallbackData
 
 from markups import (
-    InitializeMarkupInterface,
+    InitializeTextMessageMarkup,
     Conform, LeftRight,
 )
 from markups.core import (
     TextWidget,
     ButtonWidget,
     DataTextWidget,
-    AsyncInitializeMarkupInterface,
+    AsyncInitializeTextMessageMarkup,
 )
 
 
@@ -19,7 +19,7 @@ from database.models import UserGun, get_gun, get_user_gun, Gun
 from tools.emoji import Emoji
 
 
-class TitleScreen(InitializeMarkupInterface):
+class TitleScreen(InitializeTextMessageMarkup):
     def __init__(self, first_name: str):
         super().__init__()
         text_map = [
@@ -41,7 +41,7 @@ class ChooseGunForHitCallbackData(CallbackData, prefix="gun"):
     id: int
 
 
-class ChooseGunForHit(AsyncInitializeMarkupInterface):
+class ChooseGunForHit(AsyncInitializeTextMessageMarkup):
     def __init__(self, back_callback_data: str | CallbackData = "title_screen"):
         super().__init__()
         self.back_callback_data = back_callback_data
@@ -63,7 +63,7 @@ class ZoneCallbackData(CallbackData, prefix="zone"):
     max_possibles: int
 
 
-class Zones(AsyncInitializeMarkupInterface):
+class Zones(AsyncInitializeTextMessageMarkup):
     zones_emoji = {
         "10": Emoji.TEN,
         "9": Emoji.NINE,
@@ -123,7 +123,7 @@ class ZoneValueCallbackData(CallbackData, prefix="zone_value"):
     value: int
 
 
-class Zone(InitializeMarkupInterface):
+class Zone(InitializeTextMessageMarkup):
     _buttons_per_page = 20
 
     def __init__(self, zone: str, max_possibles: int, current_page: int = 0, back_callback_data: str | CallbackData = "return_to_context"):
@@ -175,7 +175,7 @@ class GunStatisticCallbackData(CallbackData, prefix="gun_statistic"):
     id: int
 
 
-class StatisticGunsList(AsyncInitializeMarkupInterface):
+class StatisticGunsList(AsyncInitializeTextMessageMarkup):
     def __init__(self, user_id: str, back_callback_data: str | CallbackData = "title_screen"):
         super().__init__()
         self._user_id = user_id
@@ -198,7 +198,7 @@ class StatisticGunsList(AsyncInitializeMarkupInterface):
 class GunInfoCallbackData(CallbackData, prefix="gun_info"):
     id: int
 
-class GunStatistic(AsyncInitializeMarkupInterface):
+class GunStatistic(AsyncInitializeTextMessageMarkup):
     _worst_point = 5
     _best_point = 10
     _coefficients = {
@@ -219,8 +219,6 @@ class GunStatistic(AsyncInitializeMarkupInterface):
 
     async def init(self):
         statistic, gun = await get_user_gun(gun_id=self._gun_id, user_id=self._user_id)
-        print(statistic.zones)
-        print(statistic.bullets_fired)
         weighted_hits = sum(statistic.zones[zone] * self._coefficients[zone] for zone in statistic.zones)
         precision = round(weighted_hits / statistic.bullets_fired * 100, 2)
         text_map = [

@@ -1,12 +1,12 @@
 from aiogram.filters.callback_data import CallbackData
 
 from bot.FSM import States
-from markups.core import InitializeMarkupInterface, TextWidget, ButtonWidget
+from markups.core import InitializeTextMessageMarkup, TextWidget, ButtonWidget
 
 from tools.emoji import Emoji
 
 
-class Info(InitializeMarkupInterface):
+class Info(InitializeTextMessageMarkup):
     def __init__(
         self,
         text: str,
@@ -21,7 +21,7 @@ class Info(InitializeMarkupInterface):
         self.text_message_markup.add_button_in_last_row(self.ok)
 
 
-class Temp(InitializeMarkupInterface):
+class Temp(InitializeTextMessageMarkup):
     def __init__(
         self,
         text: str = f"{Emoji.HOURGLASS_START} Processing...",
@@ -33,7 +33,7 @@ class Temp(InitializeMarkupInterface):
         self.text_message_markup.add_text_row(self.temp)
 
 
-class Back(InitializeMarkupInterface):
+class Back(InitializeTextMessageMarkup):
     def __init__(
         self,
         *,
@@ -46,7 +46,7 @@ class Back(InitializeMarkupInterface):
         self.text_message_markup.add_button_in_new_row(self.back)
 
 
-class LeftRight(InitializeMarkupInterface):
+class LeftRight(InitializeTextMessageMarkup):
     def __init__(
         self,
         left_callback_data: str | CallbackData,
@@ -72,7 +72,7 @@ class LeftRight(InitializeMarkupInterface):
         self.text_message_markup.add_buttons_in_new_row(self.left, self.right)
 
 
-class LeftBackRight(InitializeMarkupInterface):
+class LeftBackRight(InitializeTextMessageMarkup):
     def __init__(
         self,
         left_callback_data: str | CallbackData,
@@ -103,7 +103,7 @@ class LeftBackRight(InitializeMarkupInterface):
         )
 
 
-class Input(InitializeMarkupInterface):
+class Input(InitializeTextMessageMarkup):
     def __init__(
         self,
         text: str,
@@ -120,7 +120,7 @@ class Input(InitializeMarkupInterface):
         self.text_message_markup.attach(self.back)
 
 
-class Conform(InitializeMarkupInterface):
+class Conform(InitializeTextMessageMarkup):
     def __init__(
         self,
         text: str,
@@ -138,7 +138,7 @@ class Conform(InitializeMarkupInterface):
         self.text_message_markup.add_buttons_in_new_row(self.yes, self.no.back)
 
 
-class ErrorInfo(InitializeMarkupInterface):
+class ErrorInfo(InitializeTextMessageMarkup):
     def __init__(
         self,
         text: str = f"Error during data loading {Emoji.CRYING_CAT + Emoji.BROKEN_HEARTH} Sorry",

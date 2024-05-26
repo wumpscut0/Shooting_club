@@ -1,10 +1,13 @@
 import os
 import pickle
-from typing import Union, Any, Dict
+from typing import Union, Any, Dict, T, Tuple
 
 from redis import Redis
 from redis.commands.core import ResponseT
 from redis.typing import KeyT, ExpiryT, AbsExpiryT
+
+from markups import InitializeTextMessageMarkup
+from markups.core import InitializePhotoMessageMarkup, InitializeVoiceMessageMarkup
 
 
 class CustomRedis(Redis):
@@ -69,30 +72,75 @@ class RedisSetUp:
         self._user_id = user_id
 
 
-class TextMessagesPool(RedisSetUp):
+class UserData(RedisSetUp):
     @property
-    def photo_message_id(self):
-        return self._storage.get(f"photo_message_id:{self._user_id}")
+    def name(self):
+        return self._storage.get(f"name:{self._user_id}")
 
-    @photo_message_id.setter
-    def photo_message_id(self, data: Any):
-        self._storage.set(f"photo_message_id:{self._user_id}", data)
+    @name.setter
+    def name(self, data: Any):
+        self._storage.set(f"name:{self._user_id}", data)
 
+
+class PhotoMessagesPool(RedisSetUp):
+    @property
+    def context(self) -> Tuple[InitializePhotoMessageMarkup, Tuple[Any, ...], Dict[str, Any]]:
+        return self._storage.get(f"photo_context:{self._user_id}")
+
+    @context.setter
+    def context(self, context: Tuple[InitializePhotoMessageMarkup, Tuple[Any, ...], Dict[str, Any]]):
+        self._storage.set(f"photo_context:{self._user_id}", context)
+
+
+class VoiceMessagesPool(RedisSetUp):
+    @property
+    def context(self) -> Tuple[InitializeVoiceMessageMarkup, Tuple[Any, ...], Dict[str, Any]]:
+        return self._storage.get(f"voice_context:{self._user_id}")
+
+    @context.setter
+    def context(self, context: Tuple[InitializeVoiceMessageMarkup, Tuple[Any, ...], Dict[str, Any]]):
+        self._storage.set(f"voice_context:{self._user_id}", context)
+
+    @property
+    def voice_message_ids_pull(self):
+        pull = self._storage.get(f"voice_message_ids_pull:{self._user_id}")
+        if pull is None:
+            return []
+        return pull
+
+    @property
+    def last_voice_message_ids_pull(self):
+        try:
+            return self.voice_message_ids_pull[-1]
+        except IndexError:
+            pass
+
+    def add_message_id_to_the_pull(self, message_id: int):
+        pull = self.voice_message_ids_pull
+        pull.append(message_id)
+        self.voice_message_ids_pull = pull
+
+    def pop_last_message_id_from_the_pull(self):
+        pull = self.voice_message_ids_pull
+        try:
+            pull.pop()
+            self.voice_message_ids_pull = pull
+        except IndexError:
+            pass
+
+    @voice_message_ids_pull.setter
+    def voice_message_ids_pull(self, data: Any):
+        self._storage.set(f"voice_message_ids_pull:{self._user_id}", data)
+
+
+class TextMessagesPool(RedisSetUp):
     @property
     def context(self):
         return self._storage.get(f"context:{self._user_id}")
 
     @context.setter
-    def context(self, data: Any):
-        self._storage.set(f"context:{self._user_id}", data)
-
-    @property
-    def first_name(self):
-        return self._storage.get(f"first_name:{self._user_id}")
-
-    @first_name.setter
-    def first_name(self, data: Any):
-        self._storage.set(f"first_name:{self._user_id}", data)
+    def context(self, context: Tuple[InitializeTextMessageMarkup, Tuple[Any, ...], Dict[str, Any]]):
+        self._storage.set(f"context:{self._user_id}", context)
 
     @property
     def message_ids_pull(self):
@@ -126,7 +174,7 @@ class TextMessagesPool(RedisSetUp):
         self._storage.set(f"message_ids_pull:{self._user_id}", data)
 
 
-class UserStorage:
+class ShootingClubStorage(RedisSetUp):
     @property
     def bullets(self):
         return self._storage.get(f"bullets:{self._user_id}")
@@ -149,6 +197,7 @@ class UserStorage:
 
     def clear(self):
         self._storage.set(f"zones:{self._user_id}", {"5": 0, "6": 0, "7": 0, "8": 0, "9": 0, "10": 0})
+        self.bullets = 0
 
     @property
     def milk(self):

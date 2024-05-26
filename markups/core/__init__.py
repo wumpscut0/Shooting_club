@@ -1,6 +1,6 @@
 from typing import List, Self
 
-from aiogram.types import InputMediaPhoto
+from aiogram.types import InputMediaPhoto, FSInputFile
 from aiogram.utils.formatting import as_list, Text, Bold, Italic
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -12,12 +12,12 @@ from aiogram.fsm.state import State
 from tools.emoji import Emoji
 
 
-class InitializeMarkupInterface(ABC):
+class InitializeTextMessageMarkup(ABC):
     def __init__(self, state: State | None = None):
         self.text_message_markup = TextMessageMarkup(state)
 
 
-class AsyncInitializeMarkupInterface(InitializeMarkupInterface):
+class AsyncInitializeTextMessageMarkup(InitializeTextMessageMarkup):
     @abstractmethod
     async def init(self):
         """
@@ -25,6 +25,30 @@ class AsyncInitializeMarkupInterface(InitializeMarkupInterface):
         self.text_message_markup.add_text_row(<widget>)\n
         return self | self.text_message_markup |
         """
+        ...
+
+
+class InitializePhotoMessageMarkup(ABC):
+    def __init__(self, state: State | None):
+        super().__init__(state)
+        self.photo_message_markup = PhotoMessageMarkup()
+
+
+class AsyncInitializePhotoMessageMarkup(InitializePhotoMessageMarkup):
+    @abstractmethod
+    async def init(self):
+        ...
+
+
+class InitializeVoiceMessageMarkup(ABC):
+    def __init__(self, state: State | None):
+        super().__init__(state)
+        self.voice_message_markup = VoiceMessageMarkup(FSInputFile("no_audio.m4a"))
+
+
+class AsyncInitializeVoiceMessageMarkup(InitializeVoiceMessageMarkup):
+    @abstractmethod
+    async def init(self):
         ...
 
 
@@ -216,8 +240,8 @@ class TextMessageMarkup(TextMarkup, KeyboardMarkup):
         super().__init__()
         self.state = state
 
-    def attach(self, text_message_markup: InitializeMarkupInterface | Self, only_emoji_text=False):
-        if isinstance(text_message_markup, InitializeMarkupInterface):
+    def attach(self, text_message_markup: InitializeTextMessageMarkup | Self, only_emoji_text=False):
+        if isinstance(text_message_markup, InitializeTextMessageMarkup):
             text_message_markup = text_message_markup.text_message_markup
         self.add_texts_rows(*text_message_markup.text_map)
         for buttons_row in text_message_markup.keyboard_map:
@@ -225,6 +249,21 @@ class TextMessageMarkup(TextMarkup, KeyboardMarkup):
 
 
 class PhotoMessageMarkup(TextMessageMarkup):
-    def __init__(self, photo: str | InputMediaPhoto, state: State | None = None):
+    def __init__(self, *photos: str | FSInputFile, state: State | None = None):
         super().__init__(state)
-        self.photo = photo
+        self._photos = photos
+
+    @property
+    def photos(self):
+        if not self._photos:
+            return FSInputFile("no_photo.jpg")
+        return [InputMediaPhoto(media=x) for x in self._photos]
+
+    async def add_photo(self, photo: str | FSInputFile):
+        self.photos.append(InputMediaPhoto(media=photo))
+
+
+class VoiceMessageMarkup(TextMessageMarkup):
+    def __init__(self, voice: str | FSInputFile, state: State | None = None):
+        super().__init__(state)
+        self.voice = voice

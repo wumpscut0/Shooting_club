@@ -1,17 +1,19 @@
 import os
 
 from aiogram import Bot
+from aiogram.enums import InputMediaType
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, FSInputFile, InputMediaPhoto
 
-from markups import Info, InitializeMarkupInterface
-from markups.core import TextMessageMarkup, AsyncInitializeMarkupInterface
+import bot
+from markups import Info, InitializeTextMessageMarkup
+from markups.core import TextMessageMarkup, AsyncInitializeTextMessageMarkup
 from markups.specific import TitleScreen
 from tools.emoji import Emoji
 from tools.loggers import errors, info
-from utils.redis import UserStorage
+from utils.redis import ShootingClubStorage, TextMessagesPool
 
 
 class BotCommands:
@@ -40,43 +42,25 @@ class BotCommands:
         return Command(cls.bot_commands[2].command.lstrip("/"))
 
 
-class BotControl:
-    bot = Bot(os.getenv("TOKEN"), parse_mode="HTML")
-
-    def __init__(
-        self, user_id: str, state: FSMContext | None = None, contextualize: bool = True
-    ):
-        self._user_id = user_id
-        self._state = state
-        self.storage = UserStorage(user_id)
-        self.contextualize = contextualize
-
-    @property
-    def user_id(self):
-        return str(self._user_id)
+class TextMessagesControl:
 
     @property
     def context(self):
-        # Context is usually the source from which the dialog with the user began
-        # Context can also be seen as the main distribution nodes in the scenario
-        # This mechanic open new possibilities. For example.
-        # Regardless of a sudden out-of-context message, we can always return to the context node.
-        # We can abstract from multitude callbacks.
         return self.storage.context
 
     async def set_context(
-        self, initializer: type[InitializeMarkupInterface], *args, auto_return: bool = False, **kwargs
+        self, initializer: type[InitializeTextMessageMarkup], *args, auto_return: bool = False, **kwargs
     ):
         self.storage.context = initializer, args, kwargs
         if auto_return:
             await self.return_to_context()
 
     async def create_text_message(
-        self, text_message_markup: TextMessageMarkup | InitializeMarkupInterface
+        self, text_message_markup: TextMessageMarkup | InitializeTextMessageMarkup
     ):
         if isinstance(
             text_message_markup,
-            (InitializeMarkupInterface, AsyncInitializeMarkupInterface),
+            (InitializeTextMessageMarkup, AsyncInitializeTextMessageMarkup),
         ):
             text_message_markup = text_message_markup.text_message_markup
 
@@ -97,11 +81,11 @@ class BotControl:
     #  It magic method wanting only special TextMessageMarkup instance for smart update chat dialog in text message case
     async def update_text_message(
         self,
-        text_message_markup: TextMessageMarkup | InitializeMarkupInterface,
+        text_message_markup: TextMessageMarkup | InitializeTextMessageMarkup,
     ):
         if isinstance(
             text_message_markup,
-            (InitializeMarkupInterface, AsyncInitializeMarkupInterface),
+            (InitializeTextMessageMarkup, AsyncInitializeTextMessageMarkup),
         ):
             text_message_markup = text_message_markup.text_message_markup
 
@@ -133,9 +117,9 @@ class BotControl:
     async def return_to_context(self):
         try:
             initializer, args, kwargs = self.storage.context
-            if InitializeMarkupInterface in initializer.__bases__:
+            if InitializeTextMessageMarkup in initializer.__bases__:
                 await self.update_text_message(initializer(*args, **kwargs))
-            elif AsyncInitializeMarkupInterface in initializer.__bases__:
+            elif AsyncInitializeTextMessageMarkup in initializer.__bases__:
                 await self.update_text_message(
                     await initializer(*args, **kwargs).init()
                 )
@@ -210,3 +194,20 @@ class BotControl:
             )
 
         return False
+
+
+class BotControl(TextMessagesControl):
+    bot = Bot(os.getenv("TOKEN"), parse_mode="HTML")
+
+    def __init__(
+        self, user_id: str, state: FSMContext | None = None, contextualize: bool = True
+    ):
+        self._user_id = user_id
+        self._state = state
+        self.contextualize = contextualize
+
+    self.storage = TextMessagesPool(user_id)
+
+    @property
+    def user_id(self):
+        return str(self._user_id)
