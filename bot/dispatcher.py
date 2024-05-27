@@ -8,9 +8,10 @@ from bot.middleware import BuildBotControl
 from handlers import common_router
 from handlers.abyss import abyss_router
 
-from handlers.basic import basic_router
+from handlers.branch_1 import branch_1
+from handlers.branch_3 import branch_3
 from handlers.commands import commands_router
-from handlers.person_statistic import person_statistic
+from handlers.branch_2 import branch_2
 
 
 class MessagePrivateFilter:
@@ -35,7 +36,8 @@ dispatcher.callback_query.filter(CallbackPrivateFilter())
 dispatcher.include_routers(
     common_router,
     commands_router,
-    basic_router,
-    person_statistic,
+    branch_1,
+    branch_2,
+    branch_3,
     abyss_router,
 )

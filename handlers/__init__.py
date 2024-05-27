@@ -1,7 +1,7 @@
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 
-from bot import BotControl
+from bot.bot_control import BotControl
 
 common_router = Router()
 

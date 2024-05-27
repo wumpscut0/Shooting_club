@@ -1,18 +1,15 @@
 import aiofiles
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
-from dotenv import find_dotenv, load_dotenv
 
-from utils.apschduler import scheduler
+from bot.bot_control import BotCommands, BotControl, Scavenger
 
-load_dotenv(find_dotenv())
 import asyncio
 
-from bot import BotControl, BotCommands
 from bot.dispatcher import dispatcher
 
 
-from database.models import create_all
+from database import create_all
 
 PAGE = "guns.txt"
 
@@ -47,42 +44,11 @@ async def get_guns_generator():
             }
         except AttributeError:
             pass
-# async def merge_data():
-#     vsevolod = {
-#         "result": {
-#             "СКС": {
-#                 "distance": 50,
-#                 "bullets": 20,
-#                 "hits": {
-#                     5: 1
-#                 }
-#             },
-#             "МОСИНА": {
-#                 "distance": 50,
-#                 "bullets": 10,
-#                 "hits": {
-#                     5: 1,
-#                     6: 1,
-#                     8: 5,
-#                     9: 2
-#                 }
-#             },
-#             "СВД": {
-#                 "distance": 50,
-#                 "bullets": 10,
-#                 "hits": {
-#                     8: 3,
-#                     9: 4,
-#                     10: 3,
-#                 }
-#             },
-#         }
-#     }
 
 
 async def main():
     # await create_all()
-    scheduler.start()
+    Scavenger.scheduler.start()
     await BotControl.bot.set_my_commands(BotCommands.bot_commands)
     await dispatcher.start_polling(BotControl.bot)
 

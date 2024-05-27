@@ -3,9 +3,11 @@ import base64
 
 
 from math import ceil
+from typing import Iterable, TypeVar, List
 
 from tools.emoji import Emoji
 
+T = TypeVar("T")
 
 def create_progress_text(
     divisible: int,
@@ -30,6 +32,18 @@ def create_progress_text(
     if show_digits:
         return f"{progress} {percent}%"
     return progress
+
+
+def split(size: int, items: Iterable[T]) -> List[List[T]]:
+    lines = []
+    line = []
+    for item in items:
+        if len(line) == size:
+            lines.append(line)
+            line = []
+        line.append(item)
+    lines.append(line)
+    return lines
 
 
 class SerializableMixin:

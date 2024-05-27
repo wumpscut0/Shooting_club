@@ -1,6 +1,7 @@
+import os.path
 from typing import List, Self
 
-from aiogram.types import InputMediaPhoto, FSInputFile
+from aiogram.types import FSInputFile
 from aiogram.utils.formatting import as_list, Text, Bold, Italic
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -10,46 +11,6 @@ from aiogram.filters.callback_data import CallbackData
 from aiogram.fsm.state import State
 
 from tools.emoji import Emoji
-
-
-class InitializeTextMessageMarkup(ABC):
-    def __init__(self, state: State | None = None):
-        self.text_message_markup = TextMessageMarkup(state)
-
-
-class AsyncInitializeTextMessageMarkup(InitializeTextMessageMarkup):
-    @abstractmethod
-    async def init(self):
-        """
-        data, code = await self._api.<method>
-        self.text_message_markup.add_text_row(<widget>)\n
-        return self | self.text_message_markup |
-        """
-        ...
-
-
-class InitializePhotoMessageMarkup(ABC):
-    def __init__(self, state: State | None):
-        super().__init__(state)
-        self.photo_message_markup = PhotoMessageMarkup()
-
-
-class AsyncInitializePhotoMessageMarkup(InitializePhotoMessageMarkup):
-    @abstractmethod
-    async def init(self):
-        ...
-
-
-class InitializeVoiceMessageMarkup(ABC):
-    def __init__(self, state: State | None):
-        super().__init__(state)
-        self.voice_message_markup = VoiceMessageMarkup(FSInputFile("no_audio.m4a"))
-
-
-class AsyncInitializeVoiceMessageMarkup(InitializeVoiceMessageMarkup):
-    @abstractmethod
-    async def init(self):
-        ...
 
 
 class TextWidget:
@@ -65,9 +26,6 @@ class TextWidget:
         self._text = text
         self.mark_left = mark_left
         self.sep = sep
-
-    def __repr__(self):
-        return self.text
 
     @property
     def text(self):
@@ -121,9 +79,6 @@ class ButtonWidget:
         self.sep = sep
         self.callback_data = callback_data
 
-    def __repr__(self):
-        return self.text
-
     @property
     def text(self):
         # separator = '' if str(self._text).startswith(' ') else ' '
@@ -136,7 +91,7 @@ class ButtonWidget:
         self._text = text
 
 
-class TextMarkup:
+class TextMarkupConstructor:
     def __init__(self, map_: List[DataTextWidget | TextWidget] | None = None):
         super().__init__()
         self._text_map = [] if map_ is None else map_
@@ -149,9 +104,6 @@ class TextMarkup:
     def text_map(self, map_: List[DataTextWidget | TextWidget]):
         self._text_map = map_
 
-    def add_text_row(self, text: DataTextWidget | TextWidget):
-        self._text_map.append(text)
-
     def add_texts_rows(self, *args: DataTextWidget | TextWidget):
         for text in args:
             self._text_map.append(text)
@@ -163,7 +115,7 @@ class TextMarkup:
         return (as_list(*[text.text for text in self._text_map])).as_html()
 
 
-class KeyboardMarkup:
+class KeyboardMarkupConstructor:
     """
     Max telegram inline keyboard buttons row is 8.
      add_button(s)_in_last_row will automatically move the button to the new row
@@ -188,38 +140,42 @@ class KeyboardMarkup:
     def keyboard_map(self, map_: List[List[ButtonWidget]]):
         self._keyboard_map = map_
 
-    def add_button_in_last_row(self, button: ButtonWidget, only_emoji_text=False):
+    def add_button_in_last_row(self, buttons: ButtonWidget, only_emoji_text=False):
         if only_emoji_text:
             limitations_row = self._limitation_row_with_emoji
         else:
             limitations_row = self._limitation_row
 
         if len(self._keyboard_map[-1]) == limitations_row:
-            self.add_button_in_new_row(button)
+            self.add_button_in_new_row(buttons)
         else:
-            self._keyboard_map[-1].append(button)
+            self._keyboard_map[-1].append(buttons)
 
-    def add_buttons_in_last_row(self, *args: ButtonWidget, only_emoji_text=False):
-        for button in args:
+    def add_buttons_in_last_row(self, *buttons: ButtonWidget, only_emoji_text=False):
+        for button in buttons:
             self.add_button_in_last_row(button, only_emoji_text)
 
     def add_button_in_new_row(self, button: ButtonWidget):
         self._keyboard_map.append([button])
 
-    def add_buttons_in_new_row(self, *args: ButtonWidget, only_emoji_text=False):
+    def add_buttons_in_new_row(self, *buttons: ButtonWidget, only_emoji_text=False):
         if only_emoji_text:
             limitations_row = self._limitation_row_with_emoji
         else:
             limitations_row = self._limitation_row
         self._keyboard_map.append([])
         limit = 0
-        for button in args:
+        for button in buttons:
             if limit == limitations_row:
                 limit = 0
                 self.add_button_in_new_row(button)
             else:
                 self.add_button_in_last_row(button, only_emoji_text)
             limit += 1
+
+    def add_buttons_as_column(self, *buttons: ButtonWidget):
+        for button in buttons:
+            self.add_button_in_new_row(button)
 
     @property
     def keyboard(self):
@@ -235,35 +191,90 @@ class KeyboardMarkup:
         return markup.as_markup()
 
 
-class TextMessageMarkup(TextMarkup, KeyboardMarkup):
-    def __init__(self, state: State | None = None):
-        super().__init__()
-        self.state = state
+class PhotoMarkupConstructor:
 
-    def attach(self, text_message_markup: InitializeTextMessageMarkup | Self, only_emoji_text=False):
-        if isinstance(text_message_markup, InitializeTextMessageMarkup):
-            text_message_markup = text_message_markup.text_message_markup
-        self.add_texts_rows(*text_message_markup.text_map)
-        for buttons_row in text_message_markup.keyboard_map:
+    def __init__(self, photo: str | FSInputFile | None = None):
+        super().__init__()
+        self._photo = photo
+
+    @property
+    def photo(self):
+        if not self._photo:
+            return FSInputFile("../../images/no_photo.jpg")
+        return self._photo
+
+    @photo.setter
+    def photo(self, photo: str | FSInputFile):
+        self._photo = photo
+
+
+class VoiceMarkupConstructor:
+    def __init__(self, voice: str | FSInputFile | None = None):
+        super().__init__()
+        self._voice = voice
+
+    @property
+    def voice(self):
+        if self._voice is None:
+            return FSInputFile(os.path.join(os.path.dirname(__file__), "..", "..", "audio", "no_audio"))
+        return self._voice
+
+    @voice.setter
+    def voice(self, voice: str | FSInputFile):
+        self._voice = voice
+
+
+class MessageConstructor(ABC):
+    async def init(self):
+        ...
+
+
+class TextMessageConstructor(
+    TextMarkupConstructor,
+    KeyboardMarkupConstructor,
+    MessageConstructor,
+):
+    def __init__(self, state: State | None = None):
+        self.state = state
+        KeyboardMarkupConstructor.__init__(self)
+        TextMarkupConstructor.__init__(self)
+
+    def merge(self, constructor: Self, only_emoji_text=False):
+        self.add_texts_rows(*constructor.text_map)
+        for buttons_row in constructor.keyboard_map:
             self.add_buttons_in_new_row(*buttons_row, only_emoji_text=only_emoji_text)
 
 
-class PhotoMessageMarkup(TextMessageMarkup):
-    def __init__(self, *photos: str | FSInputFile, state: State | None = None):
-        super().__init__(state)
-        self._photos = photos
+class PhotoMessageConstructor(
+    TextMessageConstructor,
+    PhotoMarkupConstructor,
+    MessageConstructor,
+
+):
+    def __init__(self, state: State | None = None):
+        self.state = state
+        PhotoMarkupConstructor.__init__(self)
+        TextMessageConstructor.__init__(self)
 
     @property
-    def photos(self):
-        if not self._photos:
-            return FSInputFile("no_photo.jpg")
-        return [InputMediaPhoto(media=x) for x in self._photos]
-
-    async def add_photo(self, photo: str | FSInputFile):
-        self.photos.append(InputMediaPhoto(media=photo))
+    def text(self):
+        text = super().text
+        if text != Emoji.BAN:
+            return text
 
 
-class VoiceMessageMarkup(TextMessageMarkup):
-    def __init__(self, voice: str | FSInputFile, state: State | None = None):
-        super().__init__(state)
-        self.voice = voice
+class VoiceMessageConstructor(
+    TextMessageConstructor,
+    VoiceMarkupConstructor,
+    MessageConstructor,
+):
+    def __init__(self, state: State | None = None):
+        self.state = state
+        TextMarkupConstructor.__init__(self)
+        VoiceMarkupConstructor.__init__(self)
+
+    @property
+    def text(self):
+        text = super().text
+        if text != Emoji.BAN:
+            return text
