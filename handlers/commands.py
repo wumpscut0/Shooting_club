@@ -15,7 +15,7 @@ commands_router = Router()
 
 
 @commands_router.message(BotCommands.start())
-async def continue_(message: Message, bot_control: BotControl):
+async def start(message: Message, bot_control: BotControl):
     await message.delete()
     try:
         await (User.add(bot_control.user_id))

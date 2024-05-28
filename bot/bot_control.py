@@ -5,7 +5,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramBadRequest, TelegramNetworkError
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BotCommand, InputMediaPhoto, InputMediaAudio, FSInputFile
+from aiogram.types import BotCommand, InputMediaPhoto, InputMediaAudio
 
 from markups.core import TextMessageConstructor, PhotoMessageConstructor, VoiceMessageConstructor, \
     MessageConstructor
@@ -88,15 +88,15 @@ class BotControl:
     @property
     def user_id(self):
         return str(self._user_id)
-    
+
     @property
     def context(self):
-        return self._messages_pool.context
+        return self.storage.context
 
     async def set_context(
-        self, initializer: type[MessageConstructor], *args, auto_return: bool = False, **kwargs
+            self, initializer: type[MessageConstructor], *args, auto_return: bool = False, **kwargs
     ):
-        self._messages_pool.context = initializer, args, kwargs
+        self.storage.context = initializer, args, kwargs
         if auto_return:
             await self.return_to_context()
 
@@ -114,13 +114,13 @@ class BotControl:
                 reply_markup=markup.keyboard,
             )
             await Scavenger.add_target(chat_id=self._user_id, message_id=message.message_id)
-            self._messages_pool.add_message_id_to_the_text_pull(message.message_id)
+            self._messages_pool.add_message_id_to_the_chat_pull(message.message_id)
         except TelegramBadRequest:
             errors.critical("Unsuccessfully creating text message.", exc_info=True)
 
     async def update_text_message(
-        self,
-        text_message_constructor: Type[TextMessageConstructor], *args, **kwargs
+            self,
+            text_message_constructor: Type[TextMessageConstructor], *args, **kwargs
     ):
         markup = text_message_constructor(*args, **kwargs)
         await markup.init()
@@ -166,7 +166,7 @@ class BotControl:
                 reply_markup=markup.keyboard,
             )
             await Scavenger.add_target(chat_id=self._user_id, message_id=message.message_id, await_time=1)
-            self._messages_pool.add_message_id_to_the_photo_pull(message.message_id)
+            self._messages_pool.add_message_id_to_the_chat_pull(message.message_id)
         except TelegramBadRequest:
             errors.critical("Unsuccessfully creating text message.", exc_info=True)
 
@@ -221,7 +221,7 @@ class BotControl:
                 reply_markup=markup.keyboard
             )
             await Scavenger.add_target(chat_id=self._user_id, message_id=message.message_id)
-            self._messages_pool.add_message_id_to_the_voice_pull(message.message_id)
+            self._messages_pool.add_message_id_to_the_chat_pull(message.message_id)
         except TelegramBadRequest:
             errors.critical("Unsuccessfully creating text message.", exc_info=True)
 
@@ -254,7 +254,7 @@ class BotControl:
 
     async def return_to_context(self):
         try:
-            initializer, args, kwargs = self._messages_pool.context
+            initializer, args, kwargs = self.storage.context
             if TextMessageConstructor in initializer.__bases__:
                 await self.update_text_message(
                     initializer, *args, **kwargs
@@ -275,7 +275,7 @@ class BotControl:
                     f"Kwargs: {kwargs}"
                 )
                 raise ValueError
-        except (AttributeError, ValueError, BaseException):
+        except (AttributeError, ValueError, ModuleNotFoundError, BaseException):
             errors.exception(f"broken contex")
             await self.set_context(TitleScreen, self.user_id)
             await self.update_text_message(
@@ -300,15 +300,6 @@ class BotControl:
         except TelegramBadRequest:
             pass
         self._messages_pool.remove_message_id_form_the_chat_pull(message_id)
-        # message_type = self._messages_pool.get_message_type(message_id)
-        # if message_type == "text":
-        #     await self.update_text_message(Temp(forced_text))
-        # elif message_type == "photo":
-        #     await self.update_photo_message(PhotoMessageConstructor())
-        # elif message_type == "voice":
-        #     await self.update_voice_message(VoiceMessageConstructor())
-        # else:
-        #     errors.critical(f"Failed process delete for message: {message_id}\n Type message unknown")
 
     async def api_status_code_processing(self, code: int, *expected_codes: int) -> bool:
         if code in expected_codes:
@@ -319,16 +310,14 @@ class BotControl:
             await self.set_context(TitleScreen, self.user_id)
             await self.update_text_message(
                 Info,
-                    f"Your session expired {Emoji.CRYING_CAT} Please, sign in again {Emoji.DOOR}"
-
+                f"Your session expired {Emoji.CRYING_CAT} Please, sign in again {Emoji.DOOR}"
             )
 
         elif code == 500:
             errors.critical(f"Internal server error.")
             await self.update_text_message(
                 Info,
-                    f"Internal server error {Emoji.CRYING_CAT + Emoji.BROKEN_HEARTH} Sorry"
-
+                f"Internal server error {Emoji.CRYING_CAT + Emoji.BROKEN_HEARTH} Sorry"
             )
         else:
             errors.critical(f"Unexpected status from API: {code}")

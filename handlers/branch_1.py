@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, Message, FSInputFile
 
 from bot.FSM import States
 from bot.bot_control import BotControl
-from database.__init__ import UserGun
+from database import UserGun
 from markups.core.core_text_messages import Input, Conform
 from markups.core.core_voice_messages import Voice
 from markups.text_messages import ChooseGunForHit, ChooseGunForHitCallbackData, Zones, ZoneCallbackData, Zone, \

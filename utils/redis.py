@@ -82,24 +82,6 @@ class UserStorage(RedisSetUp):
 
 
 class MessagesPool(RedisSetUp):
-    @property
-    def context(self):
-        return self._storage.get(f"context:{self._user_id}")
-
-    @context.setter
-    def context(self, context: Tuple[TextMessageConstructor, Tuple[Any, ...], Dict[str, Any]]):
-        self._storage.set(f"context:{self._user_id}", context)
-
-    def get_message_type(self, message_id):
-        for id_ in self.text_messages_ids_pull:
-            if message_id == id_:
-                return "text"
-        for id_ in self.photos_messages_ids_pull:
-            if message_id == id_:
-                return "photo"
-        for id_ in self.voice_messages_ids_pull:
-            if message_id == id_:
-                return "voice"
 
     @property
     def chat_messages_ids_pull(self):
@@ -115,7 +97,7 @@ class MessagesPool(RedisSetUp):
         except IndexError:
             pass
 
-    def _add_message_id_to_the_chat_pull(self, message_id: int):
+    def add_message_id_to_the_chat_pull(self, message_id: int):
         pull = self.chat_messages_ids_pull
         pull.append(message_id)
         self.chat_messages_ids_pull = pull
@@ -132,9 +114,6 @@ class MessagesPool(RedisSetUp):
         pull = self.chat_messages_ids_pull
         try:
             pull.remove(message_id)
-            self._remove_message_id_form_the_text_pull(message_id)
-            self._remove_message_id_form_the_photos_pull(message_id)
-            self._remove_message_id_form_the_voices_pull(message_id)
             self.chat_messages_ids_pull = pull
         except ValueError:
             pass
@@ -143,137 +122,16 @@ class MessagesPool(RedisSetUp):
     def chat_messages_ids_pull(self, data: Any):
         self._storage.set(f"chat_messages_ids_pull:{self._user_id}", data)
 
-    ###########################################################################
-
-    @property
-    def text_messages_ids_pull(self):
-        pull = self._storage.get(f"text_messages_ids_pull:{self._user_id}")
-        if pull is None:
-            return []
-        return pull
-
-    @property
-    def last_text_message_id(self):
-        try:
-            return self.text_messages_ids_pull[-1]
-        except IndexError:
-            pass
-
-    def add_message_id_to_the_text_pull(self, message_id: int):
-        self._add_message_id_to_the_chat_pull(message_id)
-        pull = self.text_messages_ids_pull
-        pull.append(message_id)
-        self.text_messages_ids_pull = pull
-
-    def pop_last_message_id_from_the_text_pull(self):
-        pull = self.text_messages_ids_pull
-        try:
-            self.remove_message_id_form_the_chat_pull(pull.pop())
-            self.text_messages_ids_pull = pull
-        except IndexError:
-            pass
-
-    def _remove_message_id_form_the_text_pull(self, message_id: int):
-        pull = self.text_messages_ids_pull
-        try:
-            pull.remove(message_id)
-            self.text_messages_ids_pull = pull
-            self.remove_message_id_form_the_chat_pull(message_id)
-        except ValueError:
-            pass
-
-    @text_messages_ids_pull.setter
-    def text_messages_ids_pull(self, data: Any):
-        self._storage.set(f"text_messages_ids_pull:{self._user_id}", data)
-
-    ###########################################################################
-
-    @property
-    def voice_messages_ids_pull(self):
-        pull = self._storage.get(f"voice_messages_ids_pull:{self._user_id}")
-        if pull is None:
-            return []
-        return pull
-
-    @property
-    def last_voice_message_id(self):
-        try:
-            return self.voice_messages_ids_pull[-1]
-        except IndexError:
-            pass
-
-    def add_message_id_to_the_voice_pull(self, message_id: int):
-        self._add_message_id_to_the_chat_pull(message_id)
-        pull = self.voice_messages_ids_pull
-        pull.append(message_id)
-        self.voice_messages_ids_pull = pull
-
-    def pop_last_message_id_from_the_voice_pull(self):
-        pull = self.voice_messages_ids_pull
-        try:
-            self.remove_message_id_form_the_chat_pull(pull.pop())
-            self.voice_messages_ids_pull = pull
-        except IndexError:
-            pass
-
-    def _remove_message_id_form_the_photos_pull(self, message_id: int):
-        pull = self.photos_messages_ids_pull
-        try:
-            pull.remove(message_id)
-            self.photos_messages_ids_pull = pull
-            self.remove_message_id_form_the_chat_pull(message_id)
-        except ValueError:
-            pass
-
-    @voice_messages_ids_pull.setter
-    def voice_messages_ids_pull(self, data: Any):
-        self._storage.set(f"voice_messages_ids_pull:{self._user_id}", data)
-
-    #############################################################################
-
-    @property
-    def photos_messages_ids_pull(self):
-        pull = self._storage.get(f"photo_messages_ids_pull:{self._user_id}")
-        if pull is None:
-            return []
-        return pull
-
-    @property
-    def last_photo_message_id(self):
-        try:
-            return self.photos_messages_ids_pull[-1]
-        except IndexError:
-            pass
-
-    def add_message_id_to_the_photo_pull(self, message_id: int):
-        self._add_message_id_to_the_chat_pull(message_id)
-        pull = self.photos_messages_ids_pull
-        pull.append(message_id)
-        self.photos_messages_ids_pull = pull
-
-    def pop_last_message_id_from_the_photo_pull(self):
-        pull = self.photos_messages_ids_pull
-        try:
-            self.remove_message_id_form_the_chat_pull(pull.pop())
-            self.photos_messages_ids_pull = pull
-        except IndexError:
-            pass
-
-    def _remove_message_id_form_the_voices_pull(self, message_id: int):
-        pull = self.voice_messages_ids_pull
-        try:
-            pull.remove(message_id)
-            self.voice_messages_ids_pull = pull
-            self.remove_message_id_form_the_chat_pull(message_id)
-        except ValueError:
-            pass
-
-    @photos_messages_ids_pull.setter
-    def photos_messages_ids_pull(self, data: Any):
-        self._storage.set(f"photo_messages_ids_pull:{self._user_id}", data)
-
 
 class ShootingClubStorage(RedisSetUp):
+    @property
+    def context(self):
+        return self._storage.get(f"context:{self._user_id}")
+
+    @context.setter
+    def context(self, context: Tuple[TextMessageConstructor, Tuple[Any, ...], Dict[str, Any]]):
+        self._storage.set(f"context:{self._user_id}", context)
+
     @property
     def bullets(self):
         return self._storage.get(f"bullets:{self._user_id}")
